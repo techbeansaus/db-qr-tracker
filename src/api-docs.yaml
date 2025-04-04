@@ -1,0 +1,223 @@
+openapi: 3.0.0
+info:
+  title: QR Code Tracker API
+  description: API for generating and tracking QR codes.
+  version: 1.0.0
+servers:
+  - url: http://localhost:5001
+    description: Development server
+paths:
+  /api/generate:
+    post:
+      summary: Generate a QR Code
+      description: Accepts a URL and returns a generated QR code image.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  example: "https://example.com"
+      responses:
+        '200':
+          description: QR Code generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  qrCode:
+                    type: string
+                    example: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB..."
+        '400':
+          description: Invalid input
+        '500':
+          description: Internal server error
+
+  /api/qrcodes:
+    get:
+      summary: Retrieve all QR Codes
+      description: Returns a list of all QR codes stored in the database.
+      responses:
+        '200':
+          description: A list of QR codes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    qrCodeId:
+                      type: string
+                      example: "60d5ec49c3f1f8f3a0c0f1e1"
+                    url:
+                      type: string
+                      example: "https://example.com"
+                    qrCode:
+                      type: string
+                      example: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB..."
+                    createdAt:
+                      type: string
+                      format: date-time
+                      example: "2025-04-04T10:00:00Z"
+        '500':
+          description: Internal server error
+
+  /api/qrcodes/{id}:
+    get:
+      summary: Retrieve a QR Code by ID
+      description: Returns details of a specific QR code using its ID.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: The ID of the QR code to retrieve
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Details of the QR code
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  qrCodeId:
+                    type: string
+                    example: "60d5ec49c3f1f8f3a0c0f1e1"
+                  url:
+                    type: string
+                    example: "https://example.com"
+                  qrCode:
+                    type: string
+                    example: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB..."
+                  createdAt:
+                    type: string
+                    format: date-time
+                    example: "2025-04-04T10:00:00Z"
+        '404':
+          description: QR Code not found
+        '500':
+          description: Internal server error
+
+  /api/scans:
+    get:
+      summary: Retrieve all scans
+      description: Returns a list of all QR code scans stored in the database.
+      responses:
+        '200':
+          description: A list of scans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      example: "60d5ec49c3f1f8f3a0c0f1e1"
+                    url:
+                      type: string
+                      example: "https://example.com"
+                    createdAt:
+                      type: string
+                      format: date-time
+                      example: "2025-04-04T10:00:00Z"
+        '500':
+          description: Internal server error
+
+
+
+  /api/scans/{id}:
+    delete:
+      summary: Delete a specific scan
+      description: Deletes a QR code scan by ID.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: The ID of the scan to delete
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Scan deleted successfully
+        '404':
+          description: Scan not found
+        '500':
+          description: Internal server error
+    get:
+      summary: Retrieve a specific scan
+      description: Returns details of a specific QR code scan by ID.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: The ID of the scan to retrieve
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Details of the scan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: "60d5ec49c3f1f8f3a0c0f1e1"
+                  url:
+                    type: string
+                    example: "https://example.com"
+                  createdAt:
+                    type: string
+                    format: date-time
+                    example: "2025-04-04T10:00:00Z"
+        '404':
+          description: Scan not found
+        '500':
+          description: Internal server error
+
+  /api/scan-analytics/{qrCodeId}:
+    get:
+      summary: Retrieve scan analytics for a specific QR Code
+      description: Returns aggregated scan data grouped by device type, location, and date for the specified QR Code ID.
+      parameters:
+        - in: path
+          name: qrCodeId
+          required: true
+          description: The ID of the QR code to retrieve scan analytics for
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Aggregated scan analytics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    deviceType:
+                      type: string
+                      example: "Mobile"
+                    location:
+                      type: string
+                      example: "New York"
+                    date:
+                      type: string
+                      example: "2025-04-04"
+                    totalScans:
+                      type: integer
+                      example: 10
+        '404':
+          description: No scan analytics found for this QR Code ID
+        '500':
+          description: Internal server error

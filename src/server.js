@@ -6,11 +6,17 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 const cors = require('cors');
 require('dotenv').config({ path: __dirname + '/../.env' });
+const yaml = require('js-yaml');
+const swaggerUi = require('swagger-ui-express');
+const fs = require('fs');
+const swaggerDocument = yaml.load(fs.readFileSync('./src/api-docs.yaml', 'utf8'));
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.use(cors());
 
 const corsOptions = {
-    origin: 'http://localhost:3002', // React app URL
+    origin: 'http://localhost:3000', // React app URL
     optionsSuccessStatus: 200
   };
   
@@ -58,6 +64,30 @@ app.post('/api/generate', async (req, res) => {
   res.json(newQRCode);
 });
 
+app.get('/api/qrcodes', async (req, res) => {
+  try {
+      const qrCodes = await QRCodeModel.find({});
+      res.json(qrCodes);
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.get('/api/qrcodes/:id', async (req, res) => {
+  const { id } = req.params; // id corresponds to qrCodeId
+  try {
+      const qrCode = await QRCodeModel.findOne({ qrCodeId: id });
+      if (!qrCode) {
+          return res.status(404).json({ message: 'QR Code not found' });
+      }
+      res.json(qrCode);
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 app.get('/api/scan', async (req, res) => {
     const { qrCodeId } = req.query;
     const userAgent = req.headers['user-agent'];
@@ -86,6 +116,56 @@ app.post('/api/scan ', async (req, res) => {
   const newScanLog = new ScanLogModel({ qrCodeId, userAgent, ip });
   await newScanLog.save();
   res.json({ message: 'Scan logged' });
+});
+
+app.get('/api/scans/:qrCodeId', async (req, res) => {
+  const { qrCodeId } = req.params; // qrCodeId from the request parameters
+  try {
+      const scanLogs = await ScanLogModel.find({ qrCodeId }); // Assuming ScanLogModel is your model for scan logs
+      if (!scanLogs || scanLogs.length === 0) {
+          return res.status(404).json({ message: 'No scan logs found for this QR Code ID' });
+      }
+      res.json(scanLogs);
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.get('/api/scan-analytics/:qrCodeId', async (req, res) => {
+  const { qrCodeId } = req.params; // qrCodeId from the request parameters
+  try {
+      const analytics = await ScanLogModel.aggregate([
+          { $match: { qrCodeId } }, // Match logs for the specific qrCodeId
+          {
+              $group: {
+                  _id: {
+                      deviceType: "$deviceType", // Assuming deviceType is a field in your scan logs
+                      location: "$location",     // Assuming location is a field in your scan logs
+                      date: { $dateToString: { format: "%Y-%m-%d", date: "$timestamp" } } // Group by date
+                  },
+                  totalScans: { $sum: 1 } // Count total scans
+              }
+          },
+          {
+              $project: {
+                  _id: 0,
+                  deviceType: "$_id.deviceType",
+                  location: "$_id.location",
+                  date: "$_id.date",
+                  totalScans: 1
+              }
+          }
+      ]);
+
+      if (!analytics || analytics.length === 0) {
+          return res.status(404).json({ message: 'No scan analytics found for this QR Code ID' });
+      }
+      res.json(analytics);
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Internal server error' });
+  }
 });
 
 app.listen(PORT, () => {
